@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Car Price Predictor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="wrapper">
+
+  <div class="header">
+    <div class="logo"><span>Car Price Predictor</span></div>
+    <div class="tagline">Used Vehicle Price Estimator</div>
+  </div>
+
+  <div class="card">
+    <form method="post" action="/predict" accept-charset="utf-8" id="predictForm">
+
+      <div class="field-row">
+        <div class="field">
+          <label>Company</label>
+          <div class="select-wrap">
+            <select id="company" name="company" required onchange="load_car_models(this.id, 'car_model')">
+              {% for company in companies %}
+              <option value="{{ company }}">{{ company }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Model</label>
+          <div class="select-wrap">
+            <select id="car_model" name="car_model" required>
+              {% for model in car_models %}
+              <option value="{{ model }}">{{ model }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Year</label>
+          <div class="select-wrap">
+            <select id="year" name="year" required>
+              {% for year in years %}
+              <option value="{{ year }}">{{ year }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Fuel Type</label>
+          <div class="select-wrap">
+            <select id="fuel_type" name="fuel_type" required>
+              <option value="" disabled selected>Select</option>
+              {% for fuel in fuel_types %}
+              <option value="{{ fuel }}">{{ fuel }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Kilometers Driven</label>
+        <input type="text" id="kms_driven" name="kms_driven" placeholder="e.g. 45000">
+      </div>
+
+      <div class="divider"></div>
+
+      <button type="button" class="btn-predict" id="predictBtn" onclick="send_data()">
+        Estimate Price
+      </button>
+
+    </form>
+
+    <div class="result-box" id="resultBox">
+      <div class="result-value" id="resultValue">—</div>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+  </div>
+
+</div>
+
+<script>
+  function load_car_models(company_id, car_model_id) {
+    var company_select = document.getElementById(company_id);
+    var car_model_select = document.getElementById(car_model_id);
+    car_model_select.innerHTML = "";
+    {% for company in companies %}
+    if (company_select.value == "{{ company }}") {
+      {% for model in car_models %}
+        {% if company in model %}
+          var newOption = document.createElement("option");
+          newOption.value = "{{ model }}";
+          newOption.innerHTML = "{{ model }}";
+          car_model_select.options.add(newOption);
+        {% endif %}
+      {% endfor %}
+    }
+    {% endfor %}
+  }
+
+  function send_data() {
+    const form = document.getElementById('predictForm');
+    const btn = document.getElementById('predictBtn');
+    const resultBox = document.getElementById('resultBox');
+    const resultValue = document.getElementById('resultValue');
+    const errorBox = document.getElementById('errorBox');
+    const kms = document.getElementById('kms_driven').value.trim();
+    if (!kms || isNaN(kms)) {
+      errorBox.textContent = 'Please enter a valid number of kilometers.';
+      errorBox.classList.add('visible');
+      return;
+    }
+
+    errorBox.classList.remove('visible');
+    btn.classList.add('loading');
+    btn.innerHTML = '<span class="spinner"></span>Estimating...';
+    resultBox.classList.remove('visible');
+
+    var fd = new FormData(form);
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/predict', true);
+
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState == XMLHttpRequest.DONE) {
+        btn.classList.remove('loading');
+        btn.innerHTML = 'Estimate Price';
+
+        if (xhr.status === 200) {
+          const amount = parseFloat(xhr.responseText);
+          if (!isNaN(amount)) {
+            resultValue.textContent = '₹ ' + amount.toLocaleString('en-IN');
+          } else {
+            resultValue.textContent = xhr.responseText;
+          }
+          resultBox.classList.add('visible');
+        } else {
+          errorBox.textContent = xhr.responseText || 'Something went wrong. Please try again.';
+          errorBox.classList.add('visible');
+        }
+      }
+    };
+
+    xhr.send(fd);
+  }
+</script>
+
+</body>
+</html>
